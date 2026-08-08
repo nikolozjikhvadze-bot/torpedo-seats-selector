@@ -61,7 +61,6 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --font-display: "Barlow Condensed", "Barlow", sans-serif;
   --font-sans: "Barlow", ui-sans-serif, system-ui, sans-serif;
-  --shadow-elevated: var(--shadow-elevated);
 }
 
 :root {
