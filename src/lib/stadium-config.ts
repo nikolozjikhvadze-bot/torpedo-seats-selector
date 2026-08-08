@@ -165,7 +165,7 @@ export const stadiumLayout: SectorConfig[] = [
     thickness: 85,
     reverse: true,
     rows: () => 15,
-    seatsPerRow: () => 27,
+    seatsPerRow: () => 28,
     category: (i) => (centrality(i, 3) < 0.4 ? 2 : 3),
     labelRotate: 90,
   }),
