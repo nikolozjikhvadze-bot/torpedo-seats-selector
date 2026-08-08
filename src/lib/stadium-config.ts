@@ -21,7 +21,7 @@ export interface SectorConfig {
   /** Position of the sector shape on the SVG bowl (viewBox 1000 x 640) */
   svg: { x: number; y: number; width: number; height: number };
   /** Rotation of the sector label, in degrees */
-  labelRotate?: number;
+  labelRotate?: number | undefined;
 }
 
 export const STANDS: Record<StandKey, { name: string; short: string }> = {
@@ -67,7 +67,7 @@ interface StripOptions {
   rows: (i: number, id: number) => number;
   seatsPerRow: (i: number, id: number) => number;
   category: (i: number, id: number) => PriceCategory;
-  labelRotate?: number;
+  labelRotate?: number | undefined;
 }
 
 function strip(o: StripOptions): SectorConfig[] {
