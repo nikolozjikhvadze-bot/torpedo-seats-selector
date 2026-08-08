@@ -5,7 +5,8 @@ export function Hero() {
   return (
     <section
       id="home"
-      className="relative overflow-hidden bg-[var(--gradient-hero)] text-primary-foreground"
+      className="relative overflow-hidden text-primary-foreground"
+      style={{ backgroundImage: "var(--gradient-hero)" }}
     >
       <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:repeating-linear-gradient(115deg,transparent_0_46px,rgba(255,255,255,.5)_46px_48px)]" />
       <div className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-24">
