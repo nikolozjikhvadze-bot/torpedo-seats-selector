@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { AuthModal, type AuthMode } from "@/components/AuthModal";
 
 const links = [
   { label: "Home", href: "#home" },
@@ -28,6 +29,14 @@ function Crest() {
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
+
+  const openAuth = (mode: AuthMode) => {
+    setAuthMode(mode);
+    setAuthOpen(true);
+    setOpen(false); // ხურავს მობილურის მენიუს, თუ ღია იყო
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/85 backdrop-blur-md">
@@ -49,10 +58,16 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <button className="rounded-md px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-secondary">
+          <button
+            onClick={() => openAuth("login")}
+            className="rounded-md px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
+          >
             Login
           </button>
-          <button className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-elevated transition-colors hover:bg-primary/90">
+          <button
+            onClick={() => openAuth("signup")}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-elevated transition-colors hover:bg-primary/90"
+          >
             Sign Up
           </button>
         </div>
@@ -81,16 +96,24 @@ export function SiteHeader() {
               </a>
             ))}
             <div className="mt-2 grid grid-cols-2 gap-2">
-              <button className="rounded-md border border-border px-3 py-2 text-sm font-semibold">
+              <button
+                onClick={() => openAuth("login")}
+                className="rounded-md border border-border px-3 py-2 text-sm font-semibold"
+              >
                 Login
               </button>
-              <button className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">
+              <button
+                onClick={() => openAuth("signup")}
+                className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
+              >
                 Sign Up
               </button>
             </div>
           </nav>
         </div>
       )}
+
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} defaultMode={authMode} />
     </header>
   );
 }
