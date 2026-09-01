@@ -22,22 +22,96 @@ interface AuthModalProps {
 export function AuthModal({ open, onOpenChange, defaultMode = "login" }: AuthModalProps) {
   const [mode, setMode] = useState<AuthMode>(defaultMode);
 
-  // Keep the tab in sync with whichever button opened the modal
+  // Form State-ები
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+
+  const [signupName, setSignupName] = useState("");
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+
+  // შეტყობინებებისა და ჩატვირთვის სტატუსები
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
   const handleOpenChange = (next: boolean) => {
-    if (next) setMode(defaultMode);
+    if (next) {
+      setMode(defaultMode);
+      setErrorMsg("");
+      setSuccessMsg("");
+    }
     onOpenChange(next);
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  // LOGIN HANDLER
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: შეაერთე შენი auth ლოგიკა აქ (მაგ. Supabase signInWithPassword)
-    console.log("Login submit");
+    setLoading(true);
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    try {
+      const response = await fetch(`${API_URL}/api/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        setSuccessMsg("წარმატებული ავტორიზაცია!");
+        
+        setTimeout(() => {
+          onOpenChange(false);
+        }, 1000);
+      } else {
+        setErrorMsg(data.message || "ავტორიზაციის შეცდომა");
+      }
+    } catch (err) {
+      setErrorMsg("სერვერთან დაკავშირება ვერ მოხერხდა");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSignupSubmit = (e: React.FormEvent) => {
+  // SIGNUP HANDLER
+  const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: შეაერთე შენი auth ლოგიკა აქ (მაგ. Supabase signUp)
-    console.log("Signup submit");
+    setLoading(true);
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    try {
+      const response = await fetch(`${API_URL}/api/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          name: signupName, 
+          email: signupEmail, 
+          password: signupPassword 
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccessMsg("რეგისტრაცია წარმატებით დასრულდა! გადადით Login-ზე.");
+        setMode("login");
+        setLoginEmail(signupEmail);
+      } else {
+        setErrorMsg(data.message || "რეგისტრაციის შეცდომა");
+      }
+    } catch (err) {
+      setErrorMsg("სერვერთან დაკავშირება ვერ მოხერხდა");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -54,44 +128,85 @@ export function AuthModal({ open, onOpenChange, defaultMode = "login" }: AuthMod
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={mode} onValueChange={(v) => setMode(v as AuthMode)} className="mt-2">
+        {/* Dynamic Status Messages */}
+        {errorMsg && <p className="text-sm font-medium text-destructive">{errorMsg}</p>}
+        {successMsg && <p className="text-sm font-medium text-emerald-600">{successMsg}</p>}
+
+        <Tabs value={mode} onValueChange={(v) => { setMode(v as AuthMode); setErrorMsg(""); setSuccessMsg(""); }} className="mt-2">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
           </TabsList>
 
+          {/* LOGIN TAB */}
           <TabsContent value="login" className="mt-4">
             <form className="space-y-4" onSubmit={handleLoginSubmit}>
               <div className="space-y-2">
                 <Label htmlFor="login-email">ელფოსტა</Label>
-                <Input id="login-email" type="email" placeholder="you@example.com" required />
+                <Input 
+                  id="login-email" 
+                  type="email" 
+                  placeholder="you@example.com" 
+                  required 
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="login-password">პაროლი</Label>
-                <Input id="login-password" type="password" placeholder="••••••••" required />
+                <Input 
+                  id="login-password" 
+                  type="password" 
+                  placeholder="••••••••" 
+                  required 
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                />
               </div>
-              <Button type="submit" className="w-full">
-                შესვლა
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "მიმდინარეობს..." : "შესვლა"}
               </Button>
             </form>
           </TabsContent>
 
+          {/* SIGNUP TAB */}
           <TabsContent value="signup" className="mt-4">
             <form className="space-y-4" onSubmit={handleSignupSubmit}>
               <div className="space-y-2">
                 <Label htmlFor="signup-name">სახელი</Label>
-                <Input id="signup-name" type="text" placeholder="შენი სახელი" required />
+                <Input 
+                  id="signup-name" 
+                  type="text" 
+                  placeholder="შენი სახელი" 
+                  required 
+                  value={signupName}
+                  onChange={(e) => setSignupName(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="signup-email">ელფოსტა</Label>
-                <Input id="signup-email" type="email" placeholder="you@example.com" required />
+                <Input 
+                  id="signup-email" 
+                  type="email" 
+                  placeholder="you@example.com" 
+                  required 
+                  value={signupEmail}
+                  onChange={(e) => setSignupEmail(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="signup-password">პაროლი</Label>
-                <Input id="signup-password" type="password" placeholder="••••••••" required />
+                <Input 
+                  id="signup-password" 
+                  type="password" 
+                  placeholder="••••••••" 
+                  required 
+                  value={signupPassword}
+                  onChange={(e) => setSignupPassword(e.target.value)}
+                />
               </div>
-              <Button type="submit" className="w-full">
-                ანგარიშის შექმნა
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "მიმდინარეობს..." : "ანგარიშის შექმნა"}
               </Button>
             </form>
           </TabsContent>
