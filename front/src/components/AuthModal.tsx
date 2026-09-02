@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "../components/AuthContext";
 
 export type AuthMode = "login" | "signup";
 
@@ -21,6 +22,9 @@ interface AuthModalProps {
 
 export function AuthModal({ open, onOpenChange, defaultMode = "login" }: AuthModalProps) {
   const [mode, setMode] = useState<AuthMode>(defaultMode);
+
+  // AuthContext
+  const { login } = useAuth();
 
   // Form State-ები
   const [loginEmail, setLoginEmail] = useState("");
@@ -63,10 +67,11 @@ export function AuthModal({ open, onOpenChange, defaultMode = "login" }: AuthMod
       const data = await response.json();
 
       if (response.ok) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-        setSuccessMsg("წარმატებული ავტორიზაცია!");
+        // AuthContext-ის login ფუნქციის გამოძახება
+        login(data.user, data.token);
         
+        setSuccessMsg("წარმატებული ავტორიზაცია!");
+
         setTimeout(() => {
           onOpenChange(false);
         }, 1000);
@@ -91,10 +96,10 @@ export function AuthModal({ open, onOpenChange, defaultMode = "login" }: AuthMod
       const response = await fetch(`${API_URL}/api/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          name: signupName, 
-          email: signupEmail, 
-          password: signupPassword 
+        body: JSON.stringify({
+          name: signupName,
+          email: signupEmail,
+          password: signupPassword,
         }),
       });
 
@@ -132,7 +137,15 @@ export function AuthModal({ open, onOpenChange, defaultMode = "login" }: AuthMod
         {errorMsg && <p className="text-sm font-medium text-destructive">{errorMsg}</p>}
         {successMsg && <p className="text-sm font-medium text-emerald-600">{successMsg}</p>}
 
-        <Tabs value={mode} onValueChange={(v) => { setMode(v as AuthMode); setErrorMsg(""); setSuccessMsg(""); }} className="mt-2">
+        <Tabs
+          value={mode}
+          onValueChange={(v) => {
+            setMode(v as AuthMode);
+            setErrorMsg("");
+            setSuccessMsg("");
+          }}
+          className="mt-2"
+        >
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -143,22 +156,22 @@ export function AuthModal({ open, onOpenChange, defaultMode = "login" }: AuthMod
             <form className="space-y-4" onSubmit={handleLoginSubmit}>
               <div className="space-y-2">
                 <Label htmlFor="login-email">ელფოსტა</Label>
-                <Input 
-                  id="login-email" 
-                  type="email" 
-                  placeholder="you@example.com" 
-                  required 
+                <Input
+                  id="login-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  required
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="login-password">პაროლი</Label>
-                <Input 
-                  id="login-password" 
-                  type="password" 
-                  placeholder="••••••••" 
-                  required 
+                <Input
+                  id="login-password"
+                  type="password"
+                  placeholder="••••••••"
+                  required
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                 />
@@ -174,33 +187,33 @@ export function AuthModal({ open, onOpenChange, defaultMode = "login" }: AuthMod
             <form className="space-y-4" onSubmit={handleSignupSubmit}>
               <div className="space-y-2">
                 <Label htmlFor="signup-name">სახელი</Label>
-                <Input 
-                  id="signup-name" 
-                  type="text" 
-                  placeholder="შენი სახელი" 
-                  required 
+                <Input
+                  id="signup-name"
+                  type="text"
+                  placeholder="შენი სახელი"
+                  required
                   value={signupName}
                   onChange={(e) => setSignupName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="signup-email">ელფოსტა</Label>
-                <Input 
-                  id="signup-email" 
-                  type="email" 
-                  placeholder="you@example.com" 
-                  required 
+                <Input
+                  id="signup-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  required
                   value={signupEmail}
                   onChange={(e) => setSignupEmail(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="signup-password">პაროლი</Label>
-                <Input 
-                  id="signup-password" 
-                  type="password" 
-                  placeholder="••••••••" 
-                  required 
+                <Input
+                  id="signup-password"
+                  type="password"
+                  placeholder="••••••••"
+                  required
                   value={signupPassword}
                   onChange={(e) => setSignupPassword(e.target.value)}
                 />
