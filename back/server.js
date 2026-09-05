@@ -18,7 +18,9 @@ mongoose
   .then(() => console.log("MongoDB connected successfully to Auth database"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// User სქემა და მოდელი (ინახება auth ბაზაში/users კოლექციაში)
+// ==================== SCHEMAS & MODELS ====================
+
+// User სქემა
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
@@ -30,6 +32,47 @@ const userSchema = new mongoose.Schema(
 
 const User = mongoose.model("User", userSchema, "users");
 
+// Booking სქემა (ინახება 'bookings' კოლექციაში)
+const bookingSchema = new mongoose.Schema(
+  {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    userEmail: { type: String, required: true },
+    matchId: { type: String, required: true },
+    matchTitle: { type: String, required: true },
+    seats: [
+      {
+        sector: String,
+        row: Number,
+        seat: Number,
+        price: Number,
+      },
+    ],
+    totalPrice: { type: Number, required: true },
+    status: { type: String, enum: ["confirmed", "cancelled"], default: "confirmed" },
+  },
+  { timestamps: true }
+);
+
+const Booking = mongoose.model("Booking", bookingSchema, "bookings");
+
+// ==================== AUTH MIDDLEWARE ====================
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ message: "დაჯავშნისთვის გთხოვთ გაიაროთ ავტორიზაცია" });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET || "torpedo_secret_key", (err, user) => {
+    if (err) {
+      return res.status(403).json({ message: "სესიის ვადა ამოიწურა, გთხოვთ ხელახლა შეხვიდეთ" });
+    }
+    req.user = user;
+    next();
+  });
+};
+
 // ==================== 1. SIGNUP ROUTE ====================
 app.post("/api/signup", async (req, res) => {
   try {
@@ -39,16 +82,13 @@ app.post("/api/signup", async (req, res) => {
       return res.status(400).json({ message: "გთხოვთ შეავსოთ ყველა ველი" });
     }
 
-    // შემოწმება: ხომ არ არსებობს უკვე ასეთი ელფოსტა
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "ეს ელფოსტა უკვე დარეგისტრირებულია" });
     }
 
-    // პაროლის დაჰეშვა უსაფრთხოებისთვის
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // ახალი მომხმარებლის შექმნა
     const newUser = new User({
       name,
       email,
@@ -73,26 +113,22 @@ app.post("/api/login", async (req, res) => {
       return res.status(400).json({ message: "გთხოვთ შეიყვანოთ ელფოსტა და პაროლი" });
     }
 
-    // მომხმარებლის მოძებნა ბაზაში
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: "მომხმარებელი ამ ელფოსტით ვერ მოიძებნა" });
     }
 
-    // პაროლის შემოწმება
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "არასწორი პაროლი" });
     }
 
-    // JWT ტოკენის გენერაცია
     const token = jwt.sign(
       { userId: user._id, email: user.email },
       process.env.JWT_SECRET || "torpedo_secret_key",
       { expiresIn: "7d" }
     );
 
-    // ვაბრუნებთ ტოკენს და მომხმარებლის მონაცემებს (პაროლის გარეშე)
     res.json({
       token,
       user: {
@@ -107,6 +143,37 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
+// ==================== 3. BOOKING ROUTE ====================
+app.post("/api/bookings", verifyToken, async (req, res) => {
+  try {
+    const { matchId, matchTitle, seats, totalPrice } = req.body;
+
+    if (!seats || seats.length === 0) {
+      return res.status(400).json({ message: "გთხოვთ აირჩიოთ სულ მცირე 1 ადგილი" });
+    }
+
+    const newBooking = new Booking({
+      userId: req.user.userId,
+      userEmail: req.user.email,
+      matchId: matchId || "torpedo-match",
+      matchTitle: matchTitle || "FC Torpedo Match",
+      seats,
+      totalPrice,
+    });
+
+    await newBooking.save();
+
+    res.status(201).json({
+      message: "ბილეთები წარმატებით დაიჯავშნა!",
+      booking: newBooking,
+    });
+  } catch (error) {
+    console.error("Booking Error:", error);
+    res.status(500).json({ message: "სერვერის შეცდომა დაჯავშნისას" });
+  }
+});
+
+// ==================== START SERVER ====================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

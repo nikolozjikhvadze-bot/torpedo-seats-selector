@@ -1,3 +1,5 @@
+import { useAuth } from "../components/AuthContext";
+import { AuthModal } from "@/components/AuthModal";
 import { useMemo, useState } from "react";
 import { Ticket, Trash2 } from "lucide-react";
 import { StadiumMap } from "./stadium-map";
@@ -15,6 +17,10 @@ import {
 } from "@/lib/stadium-config";
 
 export function TicketPicker() {
+  const { user } = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   const [selectedSector, setSelectedSector] = useState<number | null>(null);
   const [hovered, setHovered] = useState<number | null>(null);
   const [seats, setSeats] = useState<string[]>([]);
@@ -32,6 +38,62 @@ export function TicketPicker() {
   const pickSector = (id: number) => {
     setSelectedSector(id);
     setSeats([]);
+  };
+
+  // ==================== დაჯავშნის / CHECKOUT ლოგიკა ====================
+  const handleCheckout = async () => {
+    // 1. თუ მომხმარებელი არ არის ავტორიზებული, ვხსნით AuthModal-ს
+    if (!user) {
+      setAuthModalOpen(true);
+      return;
+    }
+
+    if (seats.length === 0) return;
+
+    setLoading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+      // ადგილების მონაცემების ფორმატირება ბექენდისთვის
+      const formattedSeats = seats.map((seatId) => {
+        const [, row, num] = seatId.split("-");
+        return {
+          sector: sector ? `Sector ${sector.id}` : "Unknown",
+          row: Number(row),
+          seat: Number(num),
+          price: price,
+        };
+      });
+
+      const response = await fetch(`${API_URL}/api/bookings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          matchId: `${upcomingMatch.home}-${upcomingMatch.away}`.toLowerCase().replace(/\s+/g, "-"),
+          matchTitle: `${upcomingMatch.home} vs ${upcomingMatch.away}`,
+          seats: formattedSeats,
+          totalPrice: total,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("ბილეთები წარმატებით დაიჯავშნა!");
+        setSeats([]); // არჩეული ადგილების გასუფთავება
+      } else {
+        alert(data.message || "შეცდომა დაჯავშნისას");
+      }
+    } catch (err) {
+      alert("სერვერთან დაკავშირება ვერ მოხერხდა");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -157,15 +219,23 @@ export function TicketPicker() {
               </div>
 
               <button
-                disabled={seats.length === 0}
+                onClick={handleCheckout}
+                disabled={seats.length === 0 || loading}
                 className="mt-4 w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-elevated transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Proceed to Checkout
+                {loading ? "Processing..." : "Proceed to Checkout"}
               </button>
             </>
           )}
         </aside>
       </div>
+
+      {/* ავტორიზაციის მოდალი (გაიხსნება თუ სტუმარი დააჭერს Checkout-ს) */}
+      <AuthModal
+        open={authModalOpen}
+        onOpenChange={setAuthModalOpen}
+        defaultMode="login"
+      />
     </section>
   );
 }
